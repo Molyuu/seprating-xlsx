@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "Split consolidated Excel workbooks into one file per group, one sheet per group sheet."
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    { name = "Molyuu", email = "i@molyuu.com" },
+]
 dependencies = [
     "openpyxl>=3.1",
     "tzdata; sys_platform == 'win32'",

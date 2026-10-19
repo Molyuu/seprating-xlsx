@@ -1,7 +1,11 @@
 name: Build Windows exe
 on:
   push:
+  release:
+    types: [published]
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: windows-latest
@@ -17,3 +21,9 @@ jobs:
         with:
           name: ExcelSplitter-windows
           path: dist/ExcelSplitter.exe
+      - name: Attach exe to GitHub release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/ExcelSplitter.exe --clobber

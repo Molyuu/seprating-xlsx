@@ -8,6 +8,7 @@ import tkinter.font as tkfont
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from splitter import __author__, __email__, __version__
 from splitter.engine import (
     INPUT_FILE, SOURCE_SHEET, Options, analyze, collect_inputs, default_keys,
     plan_outputs, write_outputs,
@@ -134,7 +135,7 @@ class App(tk.Tk):
             "TkDefaultFont",
         )
         self.ui_font = UI_FONT
-        self.title("Excel 拆分工具")
+        self.title(f"Excel 拆分工具 v{__version__}")
         self.geometry("900x620")
         self.minsize(720, 480)
         self.paths = []
@@ -215,6 +216,21 @@ class App(tk.Tk):
                 else None
             ),
         )
+
+        footer = ttk.Frame(self)
+        footer.pack(fill="x", padx=16, pady=(0, 8))
+        ttk.Label(
+            footer,
+            text=f"开发者：{__author__}  |  {__email__}",
+            foreground="#6B7A86",
+            font=(self.ui_font, 8),
+        ).pack(side="left")
+        ttk.Label(
+            footer,
+            text=f"版本 v{__version__}",
+            foreground="#6B7A86",
+            font=(self.ui_font, 8),
+        ).pack(side="right")
 
     # ------------------------------------------------------------------ actions
     def pick_files(self) -> None:
