@@ -1,0 +1,19 @@
+[project]
+name = "excel-splitter"
+version = "0.1.0"
+description = "Split consolidated Excel workbooks into one file per group, one sheet per group sheet."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "openpyxl>=3.1",
+    "tzdata; sys_platform == 'win32'",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.11",
+]
+
+[tool.uv]
+# Not a distributable library: app.py / split_cli.py run from the source tree.
+package = false
