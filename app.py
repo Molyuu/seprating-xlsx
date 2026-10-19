@@ -4,6 +4,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+import tkinter.font as tkfont
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
@@ -12,10 +13,127 @@ from splitter.engine import (
     plan_outputs, write_outputs,
 )
 
+UI_FONT = "TkDefaultFont"
+UI_FONT_CANDIDATES = (
+    "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB",
+)
+
+
+class AccentButton(tk.Label):
+    """A solid-colour button that renders consistently on Windows and macOS."""
+
+    BG = "#007DBD"
+    HOVER_BG = "#006BA3"
+    PRESSED_BG = "#005A8A"
+    DISABLED_BG = "#C2D6E2"
+    DISABLED_FG = "#F3F7FA"
+
+    def __init__(self, parent, text, command, font):
+        self._command = command
+        self._state = "disabled"
+        self._default = "normal"
+        self._hover = False
+        self._pressed = False
+        super().__init__(
+            parent, text=text, font=font, bg=self.DISABLED_BG,
+            fg=self.DISABLED_FG, padx=22, pady=7, cursor="arrow",
+            relief="flat", borderwidth=0,
+        )
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+        self.bind("<ButtonPress-1>", self._on_press)
+        self.bind("<ButtonRelease-1>", self._on_release)
+
+    def _apply_colours(self) -> None:
+        if self._state == "disabled":
+            bg, fg, cursor = self.DISABLED_BG, self.DISABLED_FG, "arrow"
+        else:
+            bg = self.PRESSED_BG if self._pressed else (
+                self.HOVER_BG if self._hover else self.BG
+            )
+            fg, cursor = "white", "hand2"
+        super().configure(background=bg, foreground=fg, cursor=cursor)
+
+    def _set_state(self, state) -> None:
+        self._state = "normal" if str(state) == "normal" else "disabled"
+        if self._state == "disabled":
+            self._hover = False
+            self._pressed = False
+        self._apply_colours()
+
+    def configure(self, cnf=None, **kwargs):
+        options = dict(cnf) if isinstance(cnf, dict) else {}
+        options.update(kwargs)
+        state = options.pop("state", None)
+        if "default" in options:
+            self._default = options.pop("default")
+        if state is not None:
+            self._set_state(state)
+        if options:
+            super().configure(**options)
+
+    config = configure
+
+    def __getitem__(self, key):
+        if key == "state":
+            return self._state
+        if key == "default":
+            return self._default
+        return super().__getitem__(key)
+
+    def __setitem__(self, key, value):
+        if key in ("state", "default"):
+            self.configure(**{key: value})
+            return
+        super().__setitem__(key, value)
+
+    def invoke(self):
+        if self._state == "normal":
+            return self._command()
+        return None
+
+    def _pointer_over(self, event) -> bool:
+        try:
+            return self.winfo_containing(event.x_root, event.y_root) is self
+        except (KeyError, tk.TclError):
+            return 0 <= event.x < self.winfo_width() and 0 <= event.y < self.winfo_height()
+
+    def _on_enter(self, _event) -> None:
+        if self._state == "normal":
+            self._hover = True
+            self._apply_colours()
+
+    def _on_leave(self, _event) -> None:
+        self._hover = False
+        self._pressed = False
+        self._apply_colours()
+
+    def _on_press(self, _event) -> None:
+        if self._state == "normal":
+            self._pressed = True
+            self._apply_colours()
+
+    def _on_release(self, event) -> None:
+        was_pressed = self._pressed
+        self._pressed = False
+        over = self._pointer_over(event)
+        self._hover = over and self._state == "normal"
+        self._apply_colours()
+        if was_pressed and over and self._state == "normal":
+            self._command()
+
 
 class App(tk.Tk):
     def __init__(self) -> None:
+        global UI_FONT
+
         super().__init__()
+        available_fonts = set(tkfont.families(self))
+        UI_FONT = next(
+            (family for family in UI_FONT_CANDIDATES if family in available_fonts),
+            "TkDefaultFont",
+        )
+        self.ui_font = UI_FONT
         self.title("Excel 拆分工具")
         self.geometry("900x620")
         self.minsize(720, 480)
@@ -24,76 +142,85 @@ class App(tk.Tk):
 
         self.file_key = tk.StringVar()
         self.sheet_key = tk.StringVar()
-        self.include_meta = tk.BooleanVar(value=False)
-        self.stamp_filename = tk.BooleanVar(value=False)
-        self.stamp_row = tk.BooleanVar(value=False)
-        self.tz = tk.StringVar(value="Asia/Singapore")
         self.out_dir = tk.StringVar()
-        self.status = tk.StringVar(value="1) 选择输入文件或文件夹")
         self._build()
 
     # ------------------------------------------------------------------ layout
     def _build(self) -> None:
-        pad = {"padx": 8, "pady": 4}
-        f1 = ttk.LabelFrame(self, text="1. 输入")
-        f1.pack(fill="x", **pad)
-        ttk.Button(f1, text="选择文件…", command=self.pick_files).pack(side="left", **pad)
-        ttk.Button(f1, text="选择文件夹…", command=self.pick_folder).pack(side="left", **pad)
-        self.in_label = ttk.Label(f1, text="未选择")
-        self.in_label.pack(side="left", **pad)
+        s = ttk.Style(self)
+        s.configure("Treeview", rowheight=26)
+        s.configure("Treeview.Heading", padding=(6, 4))
+        s.configure("TLabelframe.Label", font=(self.ui_font, 9, "bold"))
 
-        f2 = ttk.LabelFrame(self, text="2. 分组依据")
-        f2.pack(fill="x", **pad)
-        ttk.Label(f2, text="文件名来自:").pack(side="left", **pad)
+        f1 = ttk.LabelFrame(self, text="1. 输入", padding=(10, 6, 10, 10))
+        f1.pack(fill="x", padx=12, pady=(8, 0))
+        ttk.Button(f1, text="选择文件…", command=self.pick_files).pack(
+            side="left", padx=(0, 8)
+        )
+        self.in_label = ttk.Label(f1, text="未选择文件")
+        self.in_label.pack(side="left")
+
+        f2 = ttk.LabelFrame(self, text="2. 分组依据", padding=(10, 6, 10, 10))
+        f2.pack(fill="x", padx=12, pady=(8, 0))
+        ttk.Label(f2, text="文件名来自：").pack(side="left", padx=(0, 8))
         self.cb_file = ttk.Combobox(f2, textvariable=self.file_key, state="readonly", width=22)
-        self.cb_file.pack(side="left", **pad)
-        ttk.Label(f2, text="工作表名来自:").pack(side="left", **pad)
+        self.cb_file.pack(side="left", padx=(0, 8))
+        ttk.Label(f2, text="工作表名来自：").pack(side="left", padx=(24, 8))
         self.cb_sheet = ttk.Combobox(f2, textvariable=self.sheet_key, state="readonly", width=22)
-        self.cb_sheet.pack(side="left", **pad)
+        self.cb_sheet.pack(side="left")
         for cb in (self.cb_file, self.cb_sheet):
             cb.bind("<<ComboboxSelected>>", lambda e: self.refresh())
 
-        f3 = ttk.LabelFrame(self, text="3. 预览")
-        f3.pack(fill="both", expand=True, **pad)
+        f3 = ttk.LabelFrame(self, text="3. 预览", padding=(10, 6, 10, 10))
+        f3.pack(fill="both", expand=True, padx=12, pady=(8, 0))
         cols = ("file", "sheet", "rows", "subtotal", "source")
         self.tree = ttk.Treeview(f3, columns=cols, show="headings")
-        for c, t, w in zip(cols, ("输出文件", "工作表", "行数", "小计行", "来源"),
-                           (220, 120, 60, 60, 300)):
-            self.tree.heading(c, text=t)
-            self.tree.column(c, width=w, anchor="w")
+        column_specs = (
+            ("file", "输出文件", 200, "w", True),
+            ("sheet", "工作表", 120, "w", False),
+            ("rows", "行数", 70, "e", False),
+            ("subtotal", "小计行", 70, "e", False),
+            ("source", "来源", 280, "w", True),
+        )
+        for c, t, w, anchor, stretch in column_specs:
+            self.tree.heading(c, text=t, anchor=anchor)
+            self.tree.column(
+                c, width=w, minwidth=50, anchor=anchor, stretch=stretch
+            )
         sb = ttk.Scrollbar(f3, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
         self.tree.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
+        self.tree.tag_configure("hint", foreground="#888")
+        self._show_hint()
 
-        f4 = ttk.LabelFrame(self, text="4. 选项")
-        f4.pack(fill="x", **pad)
-        for text, var in (("包含 文件名称/工作表名称 列", self.include_meta),
-                          ("文件名加日期", self.stamp_filename),
-                          ("首行写入生成时间", self.stamp_row)):
-            ttk.Checkbutton(f4, text=text, variable=var, command=self.refresh).pack(side="left", **pad)
-        ttk.Label(f4, text="时区:").pack(side="left", **pad)
-        ttk.Entry(f4, textvariable=self.tz, width=16).pack(side="left", **pad)
-
-        f5 = ttk.LabelFrame(self, text="5. 输出")
-        f5.pack(fill="x", **pad)
-        ttk.Button(f5, text="输出文件夹…", command=self.pick_out).pack(side="left", **pad)
-        ttk.Entry(f5, textvariable=self.out_dir).pack(side="left", fill="x", expand=True, **pad)
-        self.go = ttk.Button(f5, text="开始拆分", command=self.run, state="disabled")
-        self.go.pack(side="right", **pad)
-
-        ttk.Label(self, textvariable=self.status, foreground="#444").pack(fill="x", padx=10, pady=(0, 8))
+        f5 = ttk.LabelFrame(self, text="4. 输出", padding=(10, 6, 10, 10))
+        f5.pack(fill="x", padx=12, pady=(8, 12))
+        ttk.Button(f5, text="输出文件夹…", command=self.pick_out).pack(
+            side="left", padx=(0, 8)
+        )
+        ttk.Entry(
+            f5, textvariable=self.out_dir, font=(self.ui_font, 9)
+        ).pack(side="left", fill="x", expand=True, padx=(0, 8))
+        self.go = AccentButton(
+            f5, text="开始拆分", command=self.run,
+            font=(self.ui_font, 11, "bold"),
+        )
+        self.go.pack(side="right", padx=(12, 0))
+        self.bind(
+            "<Return>",
+            lambda e: (
+                self.go.invoke()
+                if str(self.go["state"]) != "disabled"
+                else None
+            ),
+        )
 
     # ------------------------------------------------------------------ actions
     def pick_files(self) -> None:
         files = filedialog.askopenfilenames(filetypes=[("Excel", "*.xlsx *.xlsm")])
         if files:
             self.load(list(files))
-
-    def pick_folder(self) -> None:
-        d = filedialog.askdirectory()
-        if d:
-            self.load([d])
 
     def pick_out(self) -> None:
         d = filedialog.askdirectory()
@@ -117,10 +244,11 @@ class App(tk.Tk):
         self.file_key.set(fk)
         self.sheet_key.set(sk)
         self.refresh()
+        if self.result and self.result.warnings:
+            messagebox.showwarning("提示", "\n".join(self.result.warnings[:5]))
 
     def options(self) -> Options:
-        return Options(self.file_key.get(), self.sheet_key.get(), self.include_meta.get(),
-                       self.stamp_filename.get(), self.stamp_row.get(), self.tz.get().strip())
+        return Options(self.file_key.get(), self.sheet_key.get())
 
     def refresh(self) -> None:
         if not self.paths:
@@ -130,22 +258,31 @@ class App(tk.Tk):
         self.tree.delete(*self.tree.get_children())
         out = Path(self.out_dir.get() or ".")
         for plan in plan_outputs(self.result.groups, out, opt):
-            for sname, g in plan.sheets:
+            for i, (sname, g) in enumerate(plan.sheets):
                 self.tree.insert("", "end", values=(
-                    plan.path.name, sname, len(g.rows), g.subtotal_rows,
+                    plan.path.name if i == 0 else "",
+                    sname, len(g.rows), g.subtotal_rows,
                     f"{g.table.source_file.name} / {g.table.sheet}"))
-        msg = f"{len(self.result.groups)} 个分组"
-        if self.result.warnings:
-            msg += " | 警告: " + "; ".join(self.result.warnings[:3])
-        self.status.set(msg)
-        self.go.config(state="normal" if self.result.groups else "disabled")
+        self._show_hint()
+        ready = bool(self.result.groups)
+        # Only show the default-button ring when the action is actually available.
+        self.go.config(state="normal" if ready else "disabled",
+                       default="active" if ready else "normal")
+
+    def _show_hint(self) -> None:
+        if self.tree.get_children():
+            return
+        self.tree.insert(
+            "", "end",
+            values=("选择文件后在此预览拆分结果", "", "", "", ""),
+            tags=("hint",),
+        )
 
     def run(self) -> None:
         if not self.out_dir.get():
             messagebox.showwarning("提示", "请选择输出文件夹")
             return
         self.go.config(state="disabled")
-        self.status.set("正在生成…")
         opt, out = self.options(), Path(self.out_dir.get())
 
         def work():
@@ -161,10 +298,8 @@ class App(tk.Tk):
     def done(self, files, out: Path, err) -> None:
         self.go.config(state="normal")
         if err:
-            self.status.set(f"失败: {err}")
             messagebox.showerror("错误", str(err))
             return
-        self.status.set(f"完成: 生成 {len(files)} 个文件 → {out}")
         if messagebox.askyesno("完成", f"已生成 {len(files)} 个文件。\n打开输出文件夹?"):
             open_folder(out)
 
