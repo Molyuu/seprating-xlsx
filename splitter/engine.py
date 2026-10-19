@@ -135,6 +135,13 @@ def sanitize_sheet(name: str) -> str:
     return s[:31]
 
 
+def default_output_dir(inputs: List[Path], now: Optional[_dt.datetime] = None) -> Path:
+    """Return <first input stem><YYYYMMDD_HHMMSS> beside the first input file."""
+    first = Path(inputs[0])
+    stamp = (now or _dt.datetime.now()).strftime("%Y%m%d_%H%M%S")
+    return first.parent / f"{sanitize_filename(first.stem)}{stamp}"
+
+
 def _unique(name: str, used: set, limit: int) -> str:
     cand, i = name, 2
     while cand.lower() in used:

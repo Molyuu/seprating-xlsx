@@ -2,7 +2,7 @@
 
 Splits consolidated Excel files into one file per `文件名称`, with one sheet per `工作表名称`.
 
-Developer: Molyuu <i@molyuu.com> · Version: v0.1.0
+Developer: Molyuu <i@molyuu.com> · Version: v0.1.1
 
 ## Run on the Mac (development)
 
@@ -11,7 +11,8 @@ Dependencies, the Python version, and the build tool are managed by [uv]
 
     uv sync                              # create .venv from the lockfile (Python 3.11)
     uv run python app.py                 # GUI
-    uv run python split_cli.py example -o out  # CLI (add --meta --stamp-filename --stamp-row)
+    uv run python split_cli.py example         # CLI output: <file name><YYYYMMDD_HHMMSS>
+    uv run python split_cli.py example -o out  # custom output folder (add --meta --stamp-filename --stamp-row)
     uv run python split_cli.py --version      # print the version
     uv run python -m unittest discover -s tests
 
@@ -43,4 +44,6 @@ installs. End users double-click it.
 - Rows with empty key cells (e.g. `利润总计`) stay with the group above.
 - Fallback keys: a `…公司` column for the file name and the source sheet name for the sheet.
 - Metadata columns, when enabled, hold the group values (e.g. `小明`, `A`).
+- Default output folder: the first source file name plus the local system timestamp
+  (e.g. `会计公司汇总20261019_195603`), created beside the source file.
 - Timestamp: filename suffix `_YYYYMMDD` and/or a first row `生成时间: date, timezone`.

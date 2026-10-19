@@ -3,7 +3,9 @@ import argparse
 from pathlib import Path
 
 from splitter import __author__, __email__, __version__
-from splitter.engine import Options, analyze, collect_inputs, default_keys, write_outputs
+from splitter.engine import (
+    Options, analyze, collect_inputs, default_keys, default_output_dir, write_outputs,
+)
 
 
 def main() -> None:
@@ -16,7 +18,10 @@ def main() -> None:
         version=f"Excel Splitter v{__version__}",
     )
     ap.add_argument("inputs", nargs="+")
-    ap.add_argument("-o", "--out", default="output")
+    ap.add_argument(
+        "-o", "--out",
+        help="output folder (default: <input file name><YYYYMMDD_HHMMSS>)",
+    )
     ap.add_argument("--file-key", help="column for output file name (or <输入文件名>)")
     ap.add_argument("--sheet-key", help="column for output sheet name (or <源工作表名>)")
     ap.add_argument("--meta", action="store_true", help="include 文件名称/工作表名称 columns")
@@ -26,6 +31,9 @@ def main() -> None:
     a = ap.parse_args()
 
     paths = collect_inputs(a.inputs)
+    if not paths:
+        ap.error("no .xlsx files found")
+    out = Path(a.out) if a.out else default_output_dir(paths)
     columns = analyze(paths).columns
     fk, sk = default_keys(columns)
     opt = Options(a.file_key or fk, a.sheet_key or sk, a.meta, a.stamp_filename, a.stamp_row, a.tz)
@@ -34,7 +42,7 @@ def main() -> None:
         print("WARN:", w)
     for g in res.groups:
         print(f"{g.file_name} / {g.sheet_name}: {len(g.rows)} rows")
-    for p in write_outputs(res.groups, Path(a.out), opt):
+    for p in write_outputs(res.groups, out, opt):
         print("wrote", p)
 
 
