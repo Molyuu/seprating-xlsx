@@ -21,9 +21,13 @@ jobs:
         with:
           name: ExcelSplitter-windows
           path: dist/ExcelSplitter.exe
+      - name: Name release asset after tag
+        if: github.event_name == 'release'
+        shell: bash
+        run: cp dist/ExcelSplitter.exe "dist/ExcelSplitter-${{ github.event.release.tag_name }}.exe"
       - name: Attach exe to GitHub release
         if: github.event_name == 'release'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/ExcelSplitter.exe --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" "dist/ExcelSplitter-${{ github.event.release.tag_name }}.exe" --clobber

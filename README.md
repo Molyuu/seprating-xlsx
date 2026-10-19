@@ -30,7 +30,8 @@ PyInstaller cannot cross-compile, so build on Windows:
 - **GitHub (recommended):** push this folder to a GitHub repo. The workflow
   `.github/workflows/build-windows.yml` runs the tests and uploads `ExcelSplitter.exe`
   as a build artifact (Actions tab -> latest run -> Artifacts). Publishing a GitHub
-  release also builds the exe and attaches it to that release automatically.
+  release also builds the exe and attaches it as `ExcelSplitter-<tag>.exe`
+  (for example, `ExcelSplitter-v0.1.1.exe`).
 - **Any Windows PC/VM:** install uv, then run
   `uv sync` and
   `uv run pyinstaller --onefile --windowed --name ExcelSplitter --collect-data tzdata app.py`.
