@@ -1,10 +1,11 @@
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 from openpyxl import load_workbook
 
-from splitter.engine import Options, analyze, write_outputs
+from splitter.engine import Options, analyze, default_output_dir, write_outputs
 
 EX = Path(__file__).resolve().parent.parent / "example"
 SRC = EX / "数据源20261019.xlsx"
@@ -12,6 +13,16 @@ SRC = EX / "数据源20261019.xlsx"
 
 def cells(ws):
     return [[(c.value, c.number_format) for c in row] for row in ws.iter_rows()]
+
+
+class DefaultOutputDirTest(unittest.TestCase):
+    def test_source_stem_plus_timestamp(self):
+        src = Path("/tmp") / "会计公司汇总.xlsx"
+        now = datetime(2026, 10, 19, 19, 56, 3)
+        self.assertEqual(
+            default_output_dir([src], now),
+            Path("/tmp/会计公司汇总20261019_195603"),
+        )
 
 
 # example/ is git-ignored, so CI may not have it.

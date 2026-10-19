@@ -11,7 +11,7 @@ from tkinter import filedialog, messagebox, ttk
 from splitter import __author__, __email__, __version__
 from splitter.engine import (
     INPUT_FILE, SOURCE_SHEET, Options, analyze, collect_inputs, default_keys,
-    plan_outputs, write_outputs,
+    default_output_dir, plan_outputs, write_outputs,
 )
 
 UI_FONT = "TkDefaultFont"
@@ -252,7 +252,7 @@ class App(tk.Tk):
                              + ", ".join(p.name for p in self.paths[:3])
                              + (" …" if len(self.paths) > 3 else ""))
         if not self.out_dir.get():
-            self.out_dir.set(str(self.paths[0].parent / "拆分结果"))
+            self.out_dir.set(str(default_output_dir(self.paths)))
         columns = analyze(self.paths).columns
         choices = [INPUT_FILE, SOURCE_SHEET] + columns
         self.cb_file["values"] = self.cb_sheet["values"] = choices
