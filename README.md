@@ -4,10 +4,20 @@ Splits consolidated Excel files into one file per `文件名称`, with one sheet
 
 ## Run on the Mac (development)
 
-    pip3 install -r requirements.txt
-    python3 app.py                       # GUI
-    python3 split_cli.py example -o out  # CLI (add --meta --stamp-filename --stamp-row)
-    python3 -m unittest discover -s tests
+Dependencies, the Python version, and the build tool are managed by [uv]
+(`pyproject.toml`, `uv.lock`, `.python-version`). Install uv once, then:
+
+    uv sync                              # create .venv from the lockfile (Python 3.11)
+    uv run python app.py                 # GUI
+    uv run python split_cli.py example -o out  # CLI (add --meta --stamp-filename --stamp-row)
+    uv run python -m unittest discover -s tests
+
+`uv run` keeps the environment in sync automatically, so `uv sync` after pulling
+is only needed to refresh `.venv`. To add or change a dependency, edit
+`[project].dependencies` / `[dependency-groups].dev` in `pyproject.toml` and run
+`uv sync` (or use `uv add openpyxl` / `uv add --dev pyinstaller`).
+
+[uv]: https://docs.astral.sh/uv/
 
 ## Build the Windows .exe
 
@@ -16,9 +26,9 @@ PyInstaller cannot cross-compile, so build on Windows:
 - **GitHub (recommended):** push this folder to a GitHub repo. The workflow
   `.github/workflows/build-windows.yml` runs the tests and uploads `ExcelSplitter.exe`
   as a build artifact (Actions tab -> latest run -> Artifacts).
-- **Any Windows PC/VM:** install Python 3.11, then run
-  `pip install -r requirements.txt pyinstaller` and
-  `pyinstaller --onefile --windowed --name ExcelSplitter --collect-data tzdata app.py`.
+- **Any Windows PC/VM:** install uv, then run
+  `uv sync` and
+  `uv run pyinstaller --onefile --windowed --name ExcelSplitter --collect-data tzdata app.py`.
 
 The result, `dist/ExcelSplitter.exe`, is a single file that needs no Python or other
 installs. End users double-click it.
