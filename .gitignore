@@ -4,5 +4,4 @@ __pycache__/
 build/
 dist/
 *.spec
-example
 .DS_Store

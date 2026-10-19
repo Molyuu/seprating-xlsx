@@ -7,12 +7,15 @@ from openpyxl import load_workbook
 from splitter.engine import Options, analyze, write_outputs
 
 EX = Path(__file__).resolve().parent.parent / "example"
+SRC = EX / "数据源20261019.xlsx"
 
 
 def cells(ws):
     return [[(c.value, c.number_format) for c in row] for row in ws.iter_rows()]
 
 
+# example/ is git-ignored, so CI may not have it.
+@unittest.skipUnless(SRC.exists(), "example files not present")
 class ExampleTest(unittest.TestCase):
     def test_matches_expected_outputs(self):
         res = analyze([EX / "数据源20261019.xlsx"])
