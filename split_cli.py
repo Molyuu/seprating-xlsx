@@ -2,11 +2,19 @@
 import argparse
 from pathlib import Path
 
+from splitter import __author__, __email__, __version__
 from splitter.engine import Options, analyze, collect_inputs, default_keys, write_outputs
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Split consolidated Excel files by group.")
+    ap = argparse.ArgumentParser(
+        description="Split consolidated Excel files by group.",
+        epilog=f"Developer: {__author__} <{__email__}>",
+    )
+    ap.add_argument(
+        "-V", "--version", action="version",
+        version=f"Excel Splitter v{__version__}",
+    )
     ap.add_argument("inputs", nargs="+")
     ap.add_argument("-o", "--out", default="output")
     ap.add_argument("--file-key", help="column for output file name (or <输入文件名>)")

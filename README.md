@@ -2,6 +2,8 @@
 
 Splits consolidated Excel files into one file per `文件名称`, with one sheet per `工作表名称`.
 
+Developer: Molyuu <i@molyuu.com> · Version: v0.1.0
+
 ## Run on the Mac (development)
 
 Dependencies, the Python version, and the build tool are managed by [uv]
@@ -10,6 +12,7 @@ Dependencies, the Python version, and the build tool are managed by [uv]
     uv sync                              # create .venv from the lockfile (Python 3.11)
     uv run python app.py                 # GUI
     uv run python split_cli.py example -o out  # CLI (add --meta --stamp-filename --stamp-row)
+    uv run python split_cli.py --version      # print the version
     uv run python -m unittest discover -s tests
 
 `uv run` keeps the environment in sync automatically, so `uv sync` after pulling
@@ -25,7 +28,8 @@ PyInstaller cannot cross-compile, so build on Windows:
 
 - **GitHub (recommended):** push this folder to a GitHub repo. The workflow
   `.github/workflows/build-windows.yml` runs the tests and uploads `ExcelSplitter.exe`
-  as a build artifact (Actions tab -> latest run -> Artifacts).
+  as a build artifact (Actions tab -> latest run -> Artifacts). Publishing a GitHub
+  release also builds the exe and attaches it to that release automatically.
 - **Any Windows PC/VM:** install uv, then run
   `uv sync` and
   `uv run pyinstaller --onefile --windowed --name ExcelSplitter --collect-data tzdata app.py`.
